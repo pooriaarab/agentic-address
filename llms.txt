@@ -1,0 +1,11 @@
+# Agentic address
+
+Verify postal addresses across vendors from CLI, SDK, or MCP.
+Package: agentic-address 0.1.0. Node.js >=18. MIT.
+SDK: verifyAddress, createAddressGuards, verifyCsv, parseCsv, normalizeAddress, vendor adapters.
+CLI: verify, batch, costs, mcp, help, version.
+MCP: verify_address, batch_verify, get_cost_report.
+Preview is the default. Live needs a live flag and an environment API key.
+Every verify needs a street. Receipts carry normalized text, a band, and a score.
+Preview and open vendors never count toward caps or costs.
+See README.md for options and examples.
