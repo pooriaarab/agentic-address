@@ -1,4 +1,5 @@
 import { VendorError } from "agentic-core";
+import { VERSION } from "../version.js";
 import { fetchJson } from "./http.js";
 import type {
   AdapterContext,
@@ -55,7 +56,7 @@ export class OsmAdapter implements VerifyAdapter {
       {
         headers: {
           Accept: "application/json",
-          "User-Agent": "agentic-address/0.1.0",
+          "User-Agent": `agentic-address/${VERSION}`,
         },
       },
       ctx,

@@ -1,9 +1,13 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import worker from "./worker.js";
 import { VERSION } from "./version.js";
 
 test("health and version", async () => {
-  expect(VERSION).toBe("0.1.0");
+  const pkg = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  ) as { version: string };
+  expect(VERSION).toBe(pkg.version);
   expect(
     await (await worker.fetch(new Request("https://address/health"))).json(),
   ).toEqual({ ok: true, pack: "agentic-address", version: VERSION });
