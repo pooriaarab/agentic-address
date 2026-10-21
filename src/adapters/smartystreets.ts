@@ -1,4 +1,4 @@
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./error.js";
 import { fetchJson } from "./http.js";
 import type {
   AdapterContext,
@@ -98,12 +98,14 @@ export class SmartyStreetsAdapter implements VerifyAdapter {
     input: AddressInput,
     ctx: AdapterContext = {},
   ): Promise<AdapterResult> {
-    const authId = this.options.authId ?? process.env.SMARTYSTREETS_AUTH_ID;
-    const authToken =
-      this.options.apiKey ?? process.env.SMARTYSTREETS_AUTH_TOKEN;
+    const authId = this.options.authId;
+    const authToken = this.options.apiKey;
     if (!authId?.trim() || !authToken?.trim()) {
-      throw new VendorError("smartystreets: missing API key");
+      throw new AdapterError("smartystreets: missing API key");
     }
+    const base = (
+      this.options.baseUrl ?? "https://us-street.api.smarty.com"
+    ).replace(/\/+$/, "");
     const params = new URLSearchParams({
       "auth-id": authId,
       "auth-token": authToken,
@@ -116,13 +118,13 @@ export class SmartyStreetsAdapter implements VerifyAdapter {
     if (input.line2) params.set("secondary", input.line2);
     const data = (await fetchJson(
       this.name,
-      `https://us-street.api.smarty.com/street-address?${params}`,
+      `${base}/street-address?${params}`,
       undefined,
       { headers: { Accept: "application/json" } },
       ctx,
     )) as SmartyCandidate[];
     if (!Array.isArray(data) || data.length === 0) {
-      throw new VendorError("smartystreets: no candidates");
+      throw new AdapterError("smartystreets: no candidates");
     }
     const best = data[0];
     const parts = [

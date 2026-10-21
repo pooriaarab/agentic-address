@@ -1,4 +1,4 @@
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./adapters/error.js";
 import { verifyAddress, type VerifyRequest } from "./address.js";
 import type { AddressInput } from "./adapters/types.js";
 
@@ -58,10 +58,10 @@ function escapeCell(cell: string): string {
 
 export function parseCsv(text: string): AddressInput[] {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length === 0) throw new VendorError("CSV is empty");
+  if (lines.length === 0) throw new AdapterError("CSV is empty");
   const header = splitLine(lines[0]).map((cell) => cell.trim().toLowerCase());
   const indexes = INPUT_COLUMNS.map((name) => header.indexOf(name));
-  if (indexes[0] < 0) throw new VendorError("CSV needs a street column");
+  if (indexes[0] < 0) throw new AdapterError("CSV needs a street column");
   return lines.slice(1).map((line) => {
     const cells = splitLine(line);
     const row: AddressInput = { street: cells[indexes[0]]?.trim() ?? "" };

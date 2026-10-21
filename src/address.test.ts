@@ -3,12 +3,8 @@ import {
   createAddressGuards,
   verifyAddress,
 } from "./address.js";
-import {
-  getCostReport,
-  GuardError,
-  resetCosts,
-  VendorError,
-} from "agentic-core";
+import { getCostReport, resetCosts } from "agentic-core";
+import { AdapterError, GuardError } from "./adapters/error.js";
 
 const FIXED_NOW = () => new Date("2026-10-11T10:00:00Z");
 
@@ -106,7 +102,7 @@ describe("keyed vendors", () => {
   test("missing key throws", async () => {
     await expect(
       verifyAddress({ ...base, vendor: "postgrid", live: true }),
-    ).rejects.toBeInstanceOf(VendorError);
+    ).rejects.toBeInstanceOf(AdapterError);
   });
 
   test("smartystreets needs auth id and token", async () => {

@@ -1,4 +1,4 @@
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./error.js";
 import { basicAuth, fetchJson } from "./http.js";
 import type {
   AdapterContext,
@@ -67,11 +67,15 @@ export class LobAdapter implements VerifyAdapter {
     input: AddressInput,
     ctx: AdapterContext = {},
   ): Promise<AdapterResult> {
-    const key = this.options.apiKey ?? process.env.LOB_API_KEY;
-    if (!key?.trim()) throw new VendorError("lob: missing API key");
+    const key = this.options.apiKey;
+    if (!key?.trim()) throw new AdapterError("lob: missing API key");
+    const base = (this.options.baseUrl ?? "https://api.lob.com").replace(
+      /\/+$/,
+      "",
+    );
     const data = (await fetchJson(
       this.name,
-      "https://api.lob.com/v1/us_verifications",
+      `${base}/v1/us_verifications`,
       undefined,
       {
         method: "POST",
@@ -91,7 +95,7 @@ export class LobAdapter implements VerifyAdapter {
       ctx,
     )) as LobResponse;
     if (!data || typeof data !== "object" || !data.deliverability) {
-      throw new VendorError("lob: invalid response");
+      throw new AdapterError("lob: invalid response");
     }
     const parts = [
       data.components?.primary_number,

@@ -1,4 +1,4 @@
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./error.js";
 import type { AdapterContext } from "./types.js";
 
 export interface FetchOptions {
@@ -16,7 +16,7 @@ export async function fetchJson(
   ctx: AdapterContext,
 ): Promise<unknown> {
   if (key !== undefined && !key.trim()) {
-    throw new VendorError(`${name}: missing API key`);
+    throw new AdapterError(`${name}: missing API key`);
   }
   let response: Response;
   try {
@@ -28,17 +28,17 @@ export async function fetchJson(
       signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
     });
   } catch (cause) {
-    throw new VendorError(`${name}: network error`, { cause });
+    throw new AdapterError(`${name}: network error`, { cause });
   }
   if (!response.ok) {
-    throw new VendorError(`${name}: HTTP ${response.status}`, {
+    throw new AdapterError(`${name}: HTTP ${response.status}`, {
       status: response.status,
     });
   }
   try {
     return (await response.json()) as unknown;
   } catch (cause) {
-    throw new VendorError(`${name}: invalid response`, { cause });
+    throw new AdapterError(`${name}: invalid response`, { cause });
   }
 }
 
