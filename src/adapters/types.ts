@@ -1,4 +1,14 @@
-import type { Logger } from "agentic-core";
+// The logger shape matches agentic-core's Logger, declared locally so
+// nothing on the /adapters path imports the core entry.
+
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+export interface Logger {
+  debug(message: string): void;
+  info(message: string): void;
+  warn(message: string): void;
+  error(message: string): void;
+}
 
 export type AddressVendor =
   | "dry"
@@ -54,4 +64,5 @@ export interface VerifyAdapter {
 export interface AdapterOptions {
   apiKey?: string;
   authId?: string;
+  baseUrl?: string;
 }
