@@ -1,4 +1,5 @@
-import { createLogger, GuardError, VendorError } from "agentic-core";
+import { createLogger } from "agentic-core";
+import { AdapterError, GuardError } from "./adapters/error.js";
 import { verifyAddress, type VerifyRequest } from "./address.js";
 import { verifyCsv } from "./batch.js";
 import { VERSION } from "./version.js";
@@ -43,7 +44,7 @@ export default {
           }),
         );
       } catch (error) {
-        if (error instanceof GuardError || error instanceof VendorError) {
+        if (error instanceof GuardError || error instanceof AdapterError) {
           return Response.json({ error: error.message }, { status: 400 });
         }
         throw error;
@@ -79,7 +80,7 @@ export default {
           }),
         );
       } catch (error) {
-        if (error instanceof GuardError || error instanceof VendorError) {
+        if (error instanceof GuardError || error instanceof AdapterError) {
           return Response.json({ error: error.message }, { status: 400 });
         }
         throw error;
@@ -110,7 +111,7 @@ export default {
         });
         return Response.json({ csv });
       } catch (error) {
-        if (error instanceof GuardError || error instanceof VendorError) {
+        if (error instanceof GuardError || error instanceof AdapterError) {
           return Response.json({ error: error.message }, { status: 400 });
         }
         throw error;

@@ -8,8 +8,7 @@
  *
  * Run: bun e2e/e2e.ts
  */
-import { VendorError } from "agentic-core";
-import { verifyAddress } from "../src/adapters.js";
+import { AdapterError, verifyAddress } from "../src/adapters.js";
 
 declare const Bun: {
   serve(opts: {
@@ -111,17 +110,44 @@ try {
     street: "1 Main St",
   });
 } catch (error) {
-  threw = error instanceof VendorError;
+  threw = error instanceof AdapterError;
 }
 check("missing key is refused", threw);
 
+// The adapters path never returns a local score dressed as a verdict:
+// a keyed vendor without live: true throws even with a key in hand,
+// "local" heuristic scoring is refused outright, and only an explicit
+// "dry" run previews — always reporting deliverability "unknown".
+threw = false;
+try {
+  await verifyAddress({
+    vendor: "postgrid",
+    apiKey: "test_postgrid_key",
+    baseUrl,
+    street: "1 Main St",
+  });
+} catch (error) {
+  threw = error instanceof AdapterError;
+}
+check("no live flag is refused even with a key", threw);
+
+threw = false;
+try {
+  await verifyAddress({ vendor: "local", street: "1 Main St" });
+} catch (error) {
+  threw = error instanceof AdapterError;
+}
+check("local heuristic scoring is refused", threw);
+
 const dry = await verifyAddress({
-  vendor: "postgrid",
-  apiKey: "test_postgrid_key",
-  baseUrl,
+  vendor: "dry",
   street: "1 Main St",
 });
-check("no live flag previews instead of calling", dry.dryRun === true);
+check("dry run still previews", dry.dryRun === true);
+check(
+  "dry preview never reads deliverable",
+  dry.deliverability === "unknown",
+);
 
 server.stop();
 console.log(`PASS ${passed} checks`);

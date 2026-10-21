@@ -1,3 +1,4 @@
+import { createLogger, recordCost } from "agentic-core";
 import { DryAdapter, LocalAdapter } from "./adapters/dry.js";
 import { LobAdapter } from "./adapters/lob.js";
 import { OsmAdapter } from "./adapters/osm.js";
@@ -35,5 +36,15 @@ function buildAdapters(req: VerifyRequest): Record<AddressVendor, VerifyAdapter>
 export async function verifyAddress(
   req: VerifyRequest,
 ): Promise<AddressReceipt> {
-  return runVerify(req, buildAdapters(req));
+  // Node entry point: keep the env fallbacks above plus the core stderr
+  // logger and the session cost ledger. The /adapters entry injects
+  // nothing, so its defaults stay a no-op logger and no cost sink.
+  return runVerify(
+    {
+      ...req,
+      logger: req.logger ?? createLogger(),
+      onCost: req.onCost ?? recordCost,
+    },
+    buildAdapters(req),
+  );
 }

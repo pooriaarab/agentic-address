@@ -132,7 +132,7 @@ const receipt = await verifyAddress({
 });
 ```
 
-The transitive `agentic-core` import needs the `nodejs_compat` compatibility flag (OpenNext workers already set it). See `e2e/worker.ts` and `e2e/e2e.ts` for a bundled proof and a dry-run E2E against a local fake.
+The `/adapters` entry imports nothing from `agentic-core`, so the bundle needs no `nodejs_compat` flag at all. Failures throw `AdapterError` (`code: "VENDOR_FAILED"`) and guard denials throw `GuardError` (`code: "GUARD_DENIED"`), both defined in the entry. Logging stays silent unless you pass a `logger`; cost records go to the `onCost` callback you pass in. On this path a verify either calls the vendor or refuses: a non-`dry` vendor without `live: true` throws (even with a key), `local` heuristic scoring is refused outright, and an explicit `dry` preview reports `deliverability: "unknown"` so it can never read as deliverable. See `e2e/worker.ts` and `e2e/e2e.ts` for a bundled proof and a dry-run E2E against a local fake.
 
 ## Delivery and behavior limits
 

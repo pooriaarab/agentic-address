@@ -33,11 +33,18 @@ export * from "./adapters/postgrid.js";
 export * from "./adapters/osm.js";
 export {
   createLogger,
-  GuardError,
-  VendorError,
   getCostReport,
   resetCosts,
 } from "agentic-core";
+// The verify path throws the local classes from ./adapters/error.js:
+// AdapterError on vendor failures and GuardError on guard denials.
+// VendorError stays exported as an alias of AdapterError so existing
+// `instanceof VendorError` catches keep matching verify failures.
+export {
+  AdapterError,
+  AdapterError as VendorError,
+  GuardError,
+} from "./adapters/error.js";
 export type {
   BrandConfig,
   Logger,

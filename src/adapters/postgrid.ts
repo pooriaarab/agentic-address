@@ -1,4 +1,4 @@
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./error.js";
 import { fetchJson } from "./http.js";
 import type {
   AdapterContext,
@@ -68,7 +68,7 @@ export class PostGridAdapter implements VerifyAdapter {
     ctx: AdapterContext = {},
   ): Promise<AdapterResult> {
     const key = this.options.apiKey;
-    if (!key?.trim()) throw new VendorError("postgrid: missing API key");
+    if (!key?.trim()) throw new AdapterError("postgrid: missing API key");
     const base = (this.options.baseUrl ?? "https://api.postgrid.com").replace(
       /\/+$/,
       "",
@@ -99,7 +99,7 @@ export class PostGridAdapter implements VerifyAdapter {
     )) as PostGridResponse;
     const inner = data?.data;
     if (!inner || typeof inner !== "object" || !inner.status) {
-      throw new VendorError("postgrid: invalid response");
+      throw new AdapterError("postgrid: invalid response");
     }
     const signals = scorePostGrid(inner.status);
     signals.residential = inner.residential ?? null;

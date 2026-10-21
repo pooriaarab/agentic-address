@@ -1,4 +1,4 @@
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./error.js";
 import { fetchJson } from "./http.js";
 import type {
   AdapterContext,
@@ -101,7 +101,7 @@ export class SmartyStreetsAdapter implements VerifyAdapter {
     const authId = this.options.authId;
     const authToken = this.options.apiKey;
     if (!authId?.trim() || !authToken?.trim()) {
-      throw new VendorError("smartystreets: missing API key");
+      throw new AdapterError("smartystreets: missing API key");
     }
     const base = (
       this.options.baseUrl ?? "https://us-street.api.smarty.com"
@@ -124,7 +124,7 @@ export class SmartyStreetsAdapter implements VerifyAdapter {
       ctx,
     )) as SmartyCandidate[];
     if (!Array.isArray(data) || data.length === 0) {
-      throw new VendorError("smartystreets: no candidates");
+      throw new AdapterError("smartystreets: no candidates");
     }
     const best = data[0];
     const parts = [
