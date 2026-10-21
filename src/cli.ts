@@ -1,12 +1,8 @@
 #!/usr/bin/env node
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import {
-  createLogger,
-  getCostReport,
-  GuardError,
-  VendorError,
-} from "agentic-core";
+import { createLogger, getCostReport } from "agentic-core";
+import { AdapterError, GuardError } from "./adapters/error.js";
 import { verifyAddress, type VerifyRequest } from "./address.js";
 import { verifyCsv } from "./batch.js";
 import { VERSION } from "./version.js";
@@ -183,7 +179,7 @@ export async function runCli(
       io.err(error.message);
       return 2;
     }
-    if (error instanceof GuardError || error instanceof VendorError) {
+    if (error instanceof GuardError || error instanceof AdapterError) {
       io.err(error.message);
       return 1;
     }

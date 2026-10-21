@@ -4,11 +4,10 @@ import { z } from "zod";
 import {
   createLogger,
   getCostReport,
-  GuardError,
-  VendorError,
   type Guards,
   type Logger,
 } from "agentic-core";
+import { AdapterError, GuardError } from "./adapters/error.js";
 import { verifyAddress } from "./address.js";
 import { verifyCsv } from "./batch.js";
 import { DEFAULT_BRAND } from "./index.js";
@@ -66,7 +65,7 @@ export function createMcpServer(deps: McpDeps = {}): McpServer {
           }),
         );
       } catch (error) {
-        if (error instanceof GuardError || error instanceof VendorError) {
+        if (error instanceof GuardError || error instanceof AdapterError) {
           return { ...result({ error: error.message }), isError: true };
         }
         throw error;
@@ -100,7 +99,7 @@ export function createMcpServer(deps: McpDeps = {}): McpServer {
           }),
         );
       } catch (error) {
-        if (error instanceof GuardError || error instanceof VendorError) {
+        if (error instanceof GuardError || error instanceof AdapterError) {
           return { ...result({ error: error.message }), isError: true };
         }
         throw error;
