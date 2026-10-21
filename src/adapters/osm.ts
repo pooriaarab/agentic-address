@@ -1,4 +1,4 @@
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./error.js";
 import { fetchJson } from "./http.js";
 import type {
   AdapterContext,
@@ -75,7 +75,7 @@ export class OsmAdapter implements VerifyAdapter {
       ctx,
     )) as OsmPlace[];
     if (!Array.isArray(data) || data.length === 0) {
-      throw new VendorError("osm: no match");
+      throw new AdapterError("osm: no match");
     }
     const place = data[0];
     const details = place.address ?? {};

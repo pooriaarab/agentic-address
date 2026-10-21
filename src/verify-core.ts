@@ -1,24 +1,112 @@
-import {
-  createGuards,
-  createLogger,
-  recordCost,
-  VendorError,
-  type Guards,
-  type GuardsConfig,
-  type Logger,
-} from "agentic-core";
+import { AdapterError, GuardError } from "./adapters/error.js";
 import type {
   AddressInput,
   AddressVendor,
+  Logger,
   NormalizedAddress,
   VerifyAdapter,
   VerifySignals,
 } from "./adapters/types.js";
 import { normalizeAddress } from "./normalize.js";
 
-// Host-neutral verify core. This module never reads process.env and
-// never touches the filesystem, so the /adapters entry point can serve
-// Cloudflare Workers. Credentials reach adapters through AdapterOptions.
+// Host-neutral verify core. This module never reads process.env, never
+// touches the filesystem, and never imports agentic-core, so the
+// /adapters entry point can serve Cloudflare Workers. Credentials reach
+// adapters through AdapterOptions; logging and cost records reach the
+// caller through injected hooks. The default logger is a no-op, and no
+// cost is reported unless the caller passes `onCost`.
+
+export interface CapsConfig {
+  maxDispatches?: number;
+}
+
+export interface QuietHoursConfig {
+  startHour?: number;
+  endHour?: number;
+}
+
+export interface GuardsConfig {
+  caps?: CapsConfig;
+  quietHours?: QuietHoursConfig;
+  blocklist?: string[];
+  now?: () => Date;
+}
+
+export interface Guards {
+  readonly dispatchCount: number;
+  checkDispatch(text: string): void;
+  recordDispatch(): void;
+}
+
+export interface CostRecord {
+  kind: string;
+  adapter: string;
+  units: number;
+  at: string;
+}
+
+function assertHour(value: number | undefined, label: string): void {
+  if (value === undefined) return;
+  if (!Number.isInteger(value) || value < 0 || value > 24) {
+    throw new Error(`${label} must be an integer from 0 to 24`);
+  }
+}
+
+// Dispatch guards identical in behaviour to agentic-core's createGuards,
+// re-implemented here so this module needs no import from the core
+// entry. Denials throw GuardError.
+export function createGuards(config: GuardsConfig = {}): Guards {
+  const maxDispatches = config.caps?.maxDispatches;
+  if (
+    maxDispatches !== undefined &&
+    (!Number.isInteger(maxDispatches) || maxDispatches < 0)
+  ) {
+    throw new Error("caps.maxDispatches must be an integer of 0 or more");
+  }
+  const startHour = config.quietHours?.startHour;
+  const endHour = config.quietHours?.endHour;
+  assertHour(startHour, "quietHours.startHour");
+  assertHour(endHour, "quietHours.endHour");
+  const blocklist = (config.blocklist ?? []).map((term) =>
+    term.toLowerCase(),
+  );
+  const now = config.now ?? (() => new Date());
+  let count = 0;
+  const inQuietHours = (date: Date): boolean => {
+    if (startHour === undefined || endHour === undefined) return false;
+    const hour = date.getUTCHours();
+    if (startHour <= endHour) {
+      return hour >= startHour && hour < endHour;
+    }
+    return hour >= startHour || hour < endHour;
+  };
+  return {
+    get dispatchCount() {
+      return count;
+    },
+    checkDispatch(text) {
+      if (maxDispatches !== undefined && count >= maxDispatches) {
+        throw new GuardError(
+          `dispatch cap reached (${maxDispatches} of ${maxDispatches})`,
+        );
+      }
+      if (inQuietHours(now())) {
+        throw new GuardError(
+          `quiet hours block dispatches from ${startHour}:00 to ${endHour}:00 UTC`,
+        );
+      }
+      const lowered = text.toLowerCase();
+      for (const term of blocklist) {
+        if (term.length > 0 && lowered.includes(term)) {
+          throw new GuardError(`text matches blocklisted term "${term}"`);
+        }
+      }
+    },
+    recordDispatch() {
+      count += 1;
+    },
+  };
+}
 
 export interface VerifyRequest extends AddressInput {
   vendor?: AddressVendor;
@@ -27,6 +115,7 @@ export interface VerifyRequest extends AddressInput {
   authId?: string;
   guards?: Guards;
   logger?: Logger;
+  onCost?: (entry: CostRecord) => void;
   fetchFn?: typeof fetch;
   now?: () => Date;
 }
@@ -48,23 +137,30 @@ export function createAddressGuards(options: GuardsConfig = {}): Guards {
   return createGuards(options);
 }
 
+const noopLogger: Logger = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+};
+
 export async function runVerify(
   req: VerifyRequest,
   adapters: Record<AddressVendor, VerifyAdapter>,
 ): Promise<AddressReceipt> {
   if (typeof req.street !== "string" || req.street.trim().length === 0) {
-    throw new VendorError("street is required");
+    throw new AdapterError("street is required");
   }
   const vendor = req.vendor ?? "dry";
   if (!Object.hasOwn(adapters, vendor)) {
-    throw new VendorError("Unknown address vendor");
+    throw new AdapterError("Unknown address vendor");
   }
   const text = [req.street, req.line2, req.city, req.state, req.postal]
     .filter(Boolean)
     .join(" ");
   const guards = req.guards ?? createAddressGuards({ now: req.now });
   guards.checkDispatch(text);
-  const logger = req.logger ?? createLogger();
+  const logger = req.logger ?? noopLogger;
   const adapter = adapters[vendor];
   const dryRun = vendor === "dry" || (req.live !== true && adapter.needsKey);
   const runner = dryRun && vendor !== "dry" ? adapters.dry : adapter;
@@ -75,9 +171,10 @@ export async function runVerify(
       logger,
     });
   } catch (error) {
-    if (error instanceof VendorError) throw error;
-    throw new VendorError(`${vendor}: verification failed`, { cause: error });
+    if (error instanceof AdapterError) throw error;
+    throw new AdapterError(`${vendor}: verification failed`, { cause: error });
   }
+  const at = (req.now?.() ?? new Date()).toISOString();
   if (dryRun) {
     logger.info(`Preview verify with ${vendor}`);
     return {
@@ -94,12 +191,12 @@ export async function runVerify(
           : [`preview: ${vendor} was not called`, ...result.signals.notes],
       vendorId: null,
       dryRun: true,
-      at: (req.now?.() ?? new Date()).toISOString(),
+      at,
     };
   }
   if (adapter.needsKey) {
     guards.recordDispatch();
-    recordCost({ kind: "dispatch", adapter: vendor, units: 1 });
+    req.onCost?.({ kind: "dispatch", adapter: vendor, units: 1, at });
   }
   logger.info(`Verified address with ${vendor}`);
   return {
@@ -112,7 +209,6 @@ export async function runVerify(
     notes: result.signals.notes,
     vendorId: result.vendorId,
     dryRun: false,
-    at: (req.now?.() ?? new Date()).toISOString(),
+    at,
   };
 }
-

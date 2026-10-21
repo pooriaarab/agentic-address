@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { VendorError } from "agentic-core";
+import { AdapterError } from "./error.js";
 import { SmartyStreetsAdapter } from "./smartystreets.js";
 import { LobAdapter } from "./lob.js";
 import { PostGridAdapter } from "./postgrid.js";
@@ -178,7 +178,7 @@ describe("postgrid", () => {
     const fetchFn = vi.fn<typeof fetch>().mockRejectedValue(new Error("down"));
     await expect(
       new PostGridAdapter({ apiKey: "key" }).verify(input, { fetchFn }),
-    ).rejects.toBeInstanceOf(VendorError);
+    ).rejects.toBeInstanceOf(AdapterError);
   });
 });
 
