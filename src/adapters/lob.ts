@@ -67,11 +67,15 @@ export class LobAdapter implements VerifyAdapter {
     input: AddressInput,
     ctx: AdapterContext = {},
   ): Promise<AdapterResult> {
-    const key = this.options.apiKey ?? process.env.LOB_API_KEY;
+    const key = this.options.apiKey;
     if (!key?.trim()) throw new VendorError("lob: missing API key");
+    const base = (this.options.baseUrl ?? "https://api.lob.com").replace(
+      /\/+$/,
+      "",
+    );
     const data = (await fetchJson(
       this.name,
-      "https://api.lob.com/v1/us_verifications",
+      `${base}/v1/us_verifications`,
       undefined,
       {
         method: "POST",

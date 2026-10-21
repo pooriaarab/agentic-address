@@ -1,14 +1,22 @@
 import { VendorError } from "agentic-core";
-import { VERSION } from "../version.js";
 import { fetchJson } from "./http.js";
 import type {
   AdapterContext,
+  AdapterOptions,
   AdapterResult,
   AddressInput,
   VerifyAdapter,
   VerifySignals,
 } from "./types.js";
 import { clampScore, normalizePostal } from "../normalize.js";
+
+// version.ts reads package.json through node:module, so this adapter
+// keeps its own version string: the tsup define bakes the real one in
+// and source runs fall back to "dev". No node import on this path.
+declare const __PACK_VERSION__: string | undefined;
+const USER_AGENT = `agentic-address/${
+  typeof __PACK_VERSION__ === "string" ? __PACK_VERSION__ : "dev"
+}`;
 
 interface OsmPlace {
   display_name?: string;
@@ -28,6 +36,8 @@ interface OsmPlace {
 export class OsmAdapter implements VerifyAdapter {
   readonly name = "osm" as const;
   readonly needsKey = false;
+
+  constructor(private options: AdapterOptions = {}) {}
 
   async verify(
     input: AddressInput,
@@ -49,14 +59,17 @@ export class OsmAdapter implements VerifyAdapter {
       addressdetails: "1",
       limit: "1",
     });
+    const base = (
+      this.options.baseUrl ?? "https://nominatim.openstreetmap.org"
+    ).replace(/\/+$/, "");
     const data = (await fetchJson(
       this.name,
-      `https://nominatim.openstreetmap.org/search?${params}`,
+      `${base}/search?${params}`,
       undefined,
       {
         headers: {
           Accept: "application/json",
-          "User-Agent": `agentic-address/${VERSION}`,
+          "User-Agent": USER_AGENT,
         },
       },
       ctx,

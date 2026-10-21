@@ -67,11 +67,15 @@ export class PostGridAdapter implements VerifyAdapter {
     input: AddressInput,
     ctx: AdapterContext = {},
   ): Promise<AdapterResult> {
-    const key = this.options.apiKey ?? process.env.POSTGRID_API_KEY;
+    const key = this.options.apiKey;
     if (!key?.trim()) throw new VendorError("postgrid: missing API key");
+    const base = (this.options.baseUrl ?? "https://api.postgrid.com").replace(
+      /\/+$/,
+      "",
+    );
     const data = (await fetchJson(
       this.name,
-      "https://api.postgrid.com/print-mail/v1/addver/verifications",
+      `${base}/print-mail/v1/addver/verifications`,
       undefined,
       {
         method: "POST",
