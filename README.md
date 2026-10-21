@@ -117,6 +117,23 @@ The self-hosted Worker source serves `GET /health`, `POST /preview`, `POST /veri
 Preview always uses `dry`. Verify and batch accept only `dry`, `local`, and `osm`.
 The package does not supply a managed Worker service.
 
+### Edge runtimes (Cloudflare Workers)
+
+`agentic-address/adapters` is a fetch-only entry point for hosts with no filesystem and no `process.env`. Every credential arrives as an argument; nothing is read from the environment. It re-exports the adapter classes plus a `verifyAddress` that takes the same request plus a `baseUrl` override for local fakes.
+
+```js
+import { verifyAddress } from 'agentic-address/adapters';
+
+const receipt = await verifyAddress({
+  vendor: 'postgrid', live: true,
+  apiKey: env.POSTGRID_API_KEY,      // key passed in, never read from env
+  baseUrl: env.POSTGRID_API_BASE,    // optional: point at a fake for E2E
+  street: '1 Main St', city: 'Boston', state: 'MA', postal: '02108',
+});
+```
+
+The transitive `agentic-core` import needs the `nodejs_compat` compatibility flag (OpenNext workers already set it). See `e2e/worker.ts` and `e2e/e2e.ts` for a bundled proof and a dry-run E2E against a local fake.
+
 ## Delivery and behavior limits
 
 Keyed adapters use dry preview unless `live: true` or `--live` is set.

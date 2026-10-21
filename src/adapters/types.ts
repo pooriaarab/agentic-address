@@ -54,4 +54,5 @@ export interface VerifyAdapter {
 export interface AdapterOptions {
   apiKey?: string;
   authId?: string;
+  baseUrl?: string;
 }
