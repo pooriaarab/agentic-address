@@ -1,6 +1,6 @@
 {
   "name": "agentic-address",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Postal address verification and normalization with Smarty, Lob, PostGrid, and OpenStreetMap adapters for Node.js, CLI, and MCP.",
   "keywords": [
     "address-verification",
