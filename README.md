@@ -126,8 +126,8 @@ import { verifyAddress } from 'agentic-address/adapters';
 
 const receipt = await verifyAddress({
   vendor: 'postgrid', live: true,
-  apiKey: env.POSTGRID_API_KEY,      // key passed in, never read from env
-  baseUrl: env.POSTGRID_API_BASE,    // optional: point at a fake for E2E
+  apiKey: env.POSTGRID_ADDVER_API_KEY, // key passed in, never read from env
+  baseUrl: env.POSTGRID_API_BASE,      // optional: point at a fake for E2E
   street: '1 Main St', city: 'Boston', state: 'MA', postal: '02108',
 });
 ```
@@ -155,7 +155,7 @@ Authorize live provider calls before enabling them.
 | --- | --- |
 | Smarty / SmartyStreets | `SMARTYSTREETS_AUTH_ID`, `SMARTYSTREETS_AUTH_TOKEN` |
 | Lob | `LOB_API_KEY` |
-| PostGrid | `POSTGRID_API_KEY` |
+| PostGrid | `POSTGRID_ADDVER_API_KEY` (the Address Verification product's key — not the Print & Mail `POSTGRID_API_KEY`) |
 | OpenStreetMap Nominatim | None |
 
 ```sh

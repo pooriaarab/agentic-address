@@ -18,7 +18,8 @@ interface PostGridData {
   city?: string;
   provinceOrState?: string;
   postalOrZip?: string;
-  countryCode?: string;
+  country?: string;
+  errors?: Record<string, string[]>;
   residential?: boolean;
   vacant?: boolean;
 }
@@ -28,8 +29,19 @@ interface PostGridResponse {
   data?: PostGridData;
 }
 
-function scorePostGrid(status: string): VerifySignals {
-  const notes = [`postgrid: ${status}`];
+// PostGrid Address Verification documents three verdicts on data.status:
+// "verified" is deliverable as-is, "corrected" was fixed and is deliverable
+// (errors says what changed), "failed" could not be fixed. A status the docs
+// do not name is judged by the errors object: named field problems make the
+// address undeliverable, while an unexplained verdict reads only as risky.
+function scorePostGrid(
+  status: string,
+  errors: Record<string, string[]> | undefined,
+): VerifySignals {
+  const problems = Object.entries(errors ?? {}).flatMap(([field, list]) =>
+    (Array.isArray(list) ? list : []).map((msg) => `${field}: ${msg}`),
+  );
+  const notes = [`postgrid: ${status}`, ...problems];
   let score: number;
   switch (status) {
     case "verified":
@@ -38,14 +50,11 @@ function scorePostGrid(status: string): VerifySignals {
     case "corrected":
       score = 85;
       break;
-    case "partial":
-      score = 60;
-      break;
     case "failed":
       score = 15;
       break;
     default:
-      score = 40;
+      score = problems.length > 0 ? 30 : 55;
   }
   return {
     deliverability:
@@ -73,9 +82,12 @@ export class PostGridAdapter implements VerifyAdapter {
       /\/+$/,
       "",
     );
+    // Address Verification is its own PostGrid product on
+    // api.postgrid.com/v1/addver with its own key set; it never lived
+    // under /print-mail/v1. The body field is "country" ("ca" or "us").
     const data = (await fetchJson(
       this.name,
-      `${base}/print-mail/v1/addver/verifications`,
+      `${base}/v1/addver/verifications`,
       undefined,
       {
         method: "POST",
@@ -91,7 +103,7 @@ export class PostGridAdapter implements VerifyAdapter {
             city: input.city ?? "",
             provinceOrState: input.state ?? "",
             postalOrZip: input.postal ?? "",
-            countryCode: (input.country ?? "US").toUpperCase(),
+            country: (input.country ?? "US").toLowerCase(),
           },
         },
       },
@@ -101,7 +113,7 @@ export class PostGridAdapter implements VerifyAdapter {
     if (!inner || typeof inner !== "object" || !inner.status) {
       throw new AdapterError("postgrid: invalid response");
     }
-    const signals = scorePostGrid(inner.status);
+    const signals = scorePostGrid(inner.status, inner.errors);
     signals.residential = inner.residential ?? null;
     signals.vacant = inner.vacant ?? null;
     return {
@@ -111,7 +123,7 @@ export class PostGridAdapter implements VerifyAdapter {
         city: (inner.city ?? "").toUpperCase(),
         state: (inner.provinceOrState ?? "").toUpperCase(),
         postal: normalizePostal(inner.postalOrZip),
-        country: (inner.countryCode ?? "").toUpperCase(),
+        country: (inner.country ?? "").toUpperCase(),
       },
       signals,
       vendorId: inner.id ?? null,

@@ -138,31 +138,68 @@ describe("lob", () => {
 });
 
 describe("postgrid", () => {
-  test("maps status with x-api-key", async () => {
-    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
-      Response.json({
-        status: "success",
-        data: {
-          id: "pg-1",
-          status: "corrected",
-          line1: "1600 Amphitheatre Pkwy",
-          city: "Mountain View",
-          provinceOrState: "CA",
-          postalOrZip: "94043",
-          countryCode: "US",
-        },
-      }),
+  const respond = (data: Record<string, unknown>) =>
+    vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({ status: "success", data }),
     );
+
+  test("maps status with x-api-key on the addver route", async () => {
+    const fetchFn = respond({
+      id: "pg-1",
+      status: "corrected",
+      line1: "1600 Amphitheatre Pkwy",
+      city: "Mountain View",
+      provinceOrState: "CA",
+      postalOrZip: "94043",
+      country: "US",
+      errors: { postalOrZip: ["Corrected Value: ZIP"] },
+    });
     const result = await new PostGridAdapter({ apiKey: "key" }).verify(input, {
       fetchFn,
     });
-    expect(result.signals).toMatchObject({ score: 85 });
+    expect(result.signals).toMatchObject({
+      deliverability: "deliverable",
+      score: 85,
+    });
+    expect(result.signals.notes).toContain("postalOrZip: Corrected Value: ZIP");
     expect(result.vendorId).toBe("pg-1");
     const [url, init] = fetchFn.mock.calls[0];
-    expect(url).toBe(
-      "https://api.postgrid.com/print-mail/v1/addver/verifications",
-    );
+    expect(url).toBe("https://api.postgrid.com/v1/addver/verifications");
     expect(init?.headers).toMatchObject({ "x-api-key": "key" });
+    expect(JSON.parse(init!.body as string)).toMatchObject({
+      address: { country: "us" },
+    });
+  });
+
+  test("verified and failed map to the documented verdicts", async () => {
+    const good = await new PostGridAdapter({ apiKey: "key" }).verify(input, {
+      fetchFn: respond({ status: "verified", errors: {} }),
+    });
+    expect(good.signals.deliverability).toBe("deliverable");
+    const bad = await new PostGridAdapter({ apiKey: "key" }).verify(input, {
+      fetchFn: respond({
+        status: "failed",
+        errors: { line1: ["Missing Value: Suite identifier"] },
+      }),
+    });
+    expect(bad.signals.deliverability).toBe("undeliverable");
+  });
+
+  test("an undocumented status reads the errors object", async () => {
+    const withErrors = await new PostGridAdapter({ apiKey: "key" }).verify(
+      input,
+      {
+        fetchFn: respond({
+          status: "unknown-verdict",
+          errors: { city: ["Missing Value: City"] },
+        }),
+      },
+    );
+    expect(withErrors.signals.deliverability).toBe("undeliverable");
+    const silent = await new PostGridAdapter({ apiKey: "key" }).verify(input, {
+      fetchFn: respond({ status: "unknown-verdict", errors: {} }),
+    });
+    expect(silent.signals.deliverability).toBe("risky");
   });
 
   test("HTTP failure carries status", async () => {
