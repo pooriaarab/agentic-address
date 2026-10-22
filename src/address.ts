@@ -27,7 +27,7 @@ function buildAdapters(req: VerifyRequest): Record<AddressVendor, VerifyAdapter>
     }),
     lob: new LobAdapter({ apiKey: req.apiKey ?? process.env.LOB_API_KEY }),
     postgrid: new PostGridAdapter({
-      apiKey: req.apiKey ?? process.env.POSTGRID_API_KEY,
+      apiKey: req.apiKey ?? process.env.POSTGRID_ADDVER_API_KEY,
     }),
     osm: new OsmAdapter(),
   };
