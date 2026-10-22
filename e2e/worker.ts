@@ -5,7 +5,7 @@ import { verifyAddress } from "../src/adapters.js";
 // packs for Cloudflare Workers. Keys arrive as request/env arguments.
 
 export interface WorkerEnv {
-  POSTGRID_API_KEY?: string;
+  POSTGRID_ADDVER_API_KEY?: string;
   POSTGRID_API_BASE?: string;
 }
 
@@ -32,9 +32,9 @@ export default {
       } | null;
       if (!body?.street) return json({ error: "street is required" }, 400);
       const receipt = await verifyAddress({
-        vendor: env.POSTGRID_API_KEY ? "postgrid" : "dry",
-        live: Boolean(env.POSTGRID_API_KEY),
-        apiKey: env.POSTGRID_API_KEY,
+        vendor: env.POSTGRID_ADDVER_API_KEY ? "postgrid" : "dry",
+        live: Boolean(env.POSTGRID_ADDVER_API_KEY),
+        apiKey: env.POSTGRID_ADDVER_API_KEY,
         baseUrl: env.POSTGRID_API_BASE,
         street: body.street,
         city: body.city,
