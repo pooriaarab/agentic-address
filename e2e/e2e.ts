@@ -1,10 +1,12 @@
 /**
  * Dry-run E2E for agentic-address/adapters against a local fake of the
- * PostGrid address-verification API. Nothing real is sent: the fake runs
+ * PostGrid Address Verification API. Nothing real is sent: the fake runs
  * on 127.0.0.1 inside this Bun process, and the adapter's baseUrl points
- * at it. A street of "66 " inside a Springfield city fails verification,
- * everything else verifies — the same convention the directory CRM fake
- * uses (apps/web/e2e/fake-lob.ts).
+ * at it. The fake serves only POST /v1/addver/verifications — the real
+ * product route — so the old bundled /print-mail/v1 path earns a 404 and
+ * a regression to it cannot pass. A street of "66 " inside a Springfield
+ * city fails verification, everything else verifies — the same convention
+ * the directory CRM fake uses (apps/web/e2e/fake-postgrid.ts).
  *
  * Run: bun e2e/e2e.ts
  */
@@ -29,10 +31,24 @@ const server = Bun.serve({
     if (req.headers.get("x-api-key") !== "test_postgrid_key") {
       return json({ error: "unauthorized" }, 401);
     }
+    // Address Verification is its own PostGrid product; it never lived
+    // under /print-mail/v1, so the fake refuses the bundled route.
     if (
       url.pathname === "/print-mail/v1/addver/verifications" &&
       req.method === "POST"
     ) {
+      return json(
+        {
+          status: "error",
+          error: {
+            type: "invalid_route_error",
+            message: "The requested route does not exist",
+          },
+        },
+        404,
+      );
+    }
+    if (url.pathname === "/v1/addver/verifications" && req.method === "POST") {
       const { address } = (await req.json()) as {
         address: {
           line1?: string;
@@ -40,7 +56,7 @@ const server = Bun.serve({
           city?: string;
           provinceOrState?: string;
           postalOrZip?: string;
-          countryCode?: string;
+          country?: string;
         };
       };
       const line1 = address.line1 ?? "";
@@ -55,7 +71,10 @@ const server = Bun.serve({
           city: (address.city ?? "").toUpperCase(),
           provinceOrState: (address.provinceOrState ?? "").toUpperCase(),
           postalOrZip: address.postalOrZip ?? "",
-          countryCode: address.countryCode ?? "US",
+          country: (address.country ?? "us").toUpperCase(),
+          errors: bad
+            ? { line1: ["Missing Value: Suite identifier"] }
+            : {},
           residential: true,
           vacant: false,
         },
@@ -72,6 +91,15 @@ const check = (name: string, cond: boolean) => {
   passed += 1;
   console.log(`ok ${name}`);
 };
+
+// The fake refuses the bundled print-mail route the adapter used to post
+// to, so this E2E fails if that path ever comes back.
+const oldRoute = await fetch(`${baseUrl}/print-mail/v1/addver/verifications`, {
+  method: "POST",
+  headers: { "x-api-key": "test_postgrid_key" },
+  body: "{}",
+});
+check("old bundled route is refused", oldRoute.status === 404);
 
 const good = await verifyAddress({
   vendor: "postgrid",
